@@ -31,8 +31,7 @@ This is its structure:
         entrypoint.d/
         build.d/
         conf.d/
-        src/
-            private/
-            odoo/
-            addons.txt
-            repos.yaml
+        private/
+        odoo/
+        addons.txt
+        repos.yaml
