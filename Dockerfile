@@ -73,7 +73,7 @@ RUN apk add --no-cache --virtual .build-deps \
     ruby-dev libffi-dev
 
     # CSS preprocessors
-    && gem install bootstrap-sass compass \
+    && gem install --no-document bootstrap-sass compass \
     && npm install -g less \
 
     # Build and install Odoo dependencies with pip
@@ -89,6 +89,7 @@ RUN apk add --no-cache --virtual .build-deps \
         # HACK https://github.com/eventable/vobject/pull/19
         # TODO Remove in vobject>=0.9.3
         vobject==0.6.6 \
+    && CFLAGS="$CFLAGS -L/lib" pip install --no-cache-dir pillow \
     && pip install --no-cache-dir --requirement https://raw.githubusercontent.com/$ODOO_SOURCE/$ODOO_VERSION/requirements.txt \
 
     # Remove all installed garbage
