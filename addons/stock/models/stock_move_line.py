@@ -422,6 +422,7 @@ class StockMoveLine(models.Model):
 
         # Now, we can actually move the quant.
         done_ml = self.env['stock.move.line']
+        move_to_recompute_state = self.env['stock.move']
         for ml in self - ml_to_delete:
             if ml.product_id.type == 'product':
                 rounding = ml.product_uom_id.rounding
@@ -430,7 +431,7 @@ class StockMoveLine(models.Model):
                 if not ml.location_id.should_bypass_reservation() and float_compare(ml.qty_done, ml.product_uom_qty, precision_rounding=rounding) > 0:
                     qty_done_product_uom = ml.product_uom_id._compute_quantity(ml.qty_done, ml.product_id.uom_id, rounding_method='HALF-UP')
                     extra_qty = qty_done_product_uom - ml.product_qty
-                    ml._free_reservation(ml.product_id, ml.location_id, extra_qty, lot_id=ml.lot_id, package_id=ml.package_id, owner_id=ml.owner_id, ml_to_ignore=done_ml)
+                    move_to_recompute_state |= ml._free_reservation(ml.product_id, ml.location_id, extra_qty, lot_id=ml.lot_id, package_id=ml.package_id, owner_id=ml.owner_id, ml_to_ignore=done_ml, norecompute_state=True)
                 # unreserve what's been reserved
                 if not ml.location_id.should_bypass_reservation() and ml.product_id.type == 'product' and ml.product_qty:
                     Quant._update_reserved_quantity(ml.product_id, ml.location_id, -ml.product_qty, lot_id=ml.lot_id, package_id=ml.package_id, owner_id=ml.owner_id, strict=True)
@@ -447,6 +448,7 @@ class StockMoveLine(models.Model):
                         Quant._update_available_quantity(ml.product_id, ml.location_id, taken_from_untracked_qty, lot_id=ml.lot_id, package_id=ml.package_id, owner_id=ml.owner_id)
                 Quant._update_available_quantity(ml.product_id, ml.location_dest_id, quantity, lot_id=ml.lot_id, package_id=ml.result_package_id, owner_id=ml.owner_id, in_date=in_date)
             done_ml |= ml
+        move_to_recompute_state._recompute_state()
         # Reset the reserved quantity as we just moved it to the destination location.
         (self - ml_to_delete).with_context(bypass_reservation_update=True).write({
             'product_uom_qty': 0.00,
@@ -469,7 +471,7 @@ class StockMoveLine(models.Model):
             data['owner_name'] = self.env['res.partner'].browse(vals.get('owner_id')).name
         record.message_post_with_view(template, values={'move': move, 'vals': dict(vals, **data)}, subtype_id=self.env.ref('mail.mt_note').id)
 
-    def _free_reservation(self, product_id, location_id, quantity, lot_id=None, package_id=None, owner_id=None, ml_to_ignore=None):
+    def _free_reservation(self, product_id, location_id, quantity, lot_id=None, package_id=None, owner_id=None, ml_to_ignore=None, norecompute_state=False):
         """ When editing a done move line or validating one with some forced quantities, it is
         possible to impact quants that were not reserved. It is therefore necessary to edit or
         unlink the move lines that reserved a quantity now unavailable.
@@ -533,4 +535,7 @@ class StockMoveLine(models.Model):
                     candidate.product_uom_qty = self.product_id.uom_id._compute_quantity(quantity_split, candidate.product_uom_id, rounding_method='HALF-UP')
                     move_to_recompute_state |= candidate.move_id
                     break
+            if norecompute_state:
+                return move_to_recompute_state
             move_to_recompute_state._recompute_state()
+        return self.env["stock.move"]
