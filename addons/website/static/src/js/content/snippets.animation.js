@@ -1227,8 +1227,9 @@ registry.anchorSlide = publicWidget.Widget.extend({
             return;
         }
         ev.preventDefault();
+        var navbar_height = $(".o_header_affix").height() || 0;
         $('html, body').animate({
-            scrollTop: $anchor.offset().top,
+            scrollTop: $anchor.offset().top - navbar_height,
         }, 500);
     },
 });
