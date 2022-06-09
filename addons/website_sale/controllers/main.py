@@ -1220,18 +1220,14 @@ class WebsiteSale(http.Controller):
         """
         max_number_of_product_for_carousel = 12
         visitor = request.env['website.visitor']._get_visitor_from_request()
-        company = request.website.company_id or request.env.company
         if visitor:
+            excluded_products = request.website.sale_get_order().mapped('order_line.product_id.id')
             products = request.env['website.track'].sudo().read_group(
-                [('visitor_id', '=', visitor.id), ('product_id', '!=', False)],
-                ['product_id', 'visit_datetime:max'], ['product_id'], orderby='visit_datetime DESC')
+                [('visitor_id', '=', visitor.id), ('product_id', '!=', False), ('product_id.website_published', '=', True), ('product_id', 'not in', excluded_products)],
+                ['product_id', 'visit_datetime:max'], ['product_id'], limit=max_number_of_product_for_carousel, orderby='visit_datetime DESC')
             products_ids = [product['product_id'][0] for product in products]
             if products_ids:
-                excluded_products = request.website.sale_get_order().mapped('order_line.product_id.id')
-                viewed_products = request.env['product.product'].with_context(display_default_code=False).search(
-                    [('id', 'in', products_ids), ('id', 'not in', excluded_products), ('website_published', '=', True), '|', ('company_id', '=', company.id), ('company_id', '=', False)],
-                    limit=max_number_of_product_for_carousel
-                )
+                viewed_products = request.env['product.product'].with_context(display_default_code=False).search([('id', 'in', products_ids)])
 
                 FieldMonetary = request.env['ir.qweb.field.monetary']
                 monetary_options = {
