@@ -37,12 +37,6 @@
                         <field name="sponsor_count" string="Sponsors" widget="statinfo"/>
                     </button>
                 </field>
-                <label for="website_menu" position="after">
-                    <field name="website_track" attrs="{'invisible': [('website_menu', '=', False)]}"/>
-                    <label for="website_track" string="Tracks on Website" attrs="{'invisible': [('website_menu', '=', False)]}"/>
-                    <field name="website_track_proposal" attrs="{'invisible': [('website_menu', '=', False)]}"/>
-                    <label for="website_track_proposal" string="Track Proposals on Website" attrs="{'invisible': [('website_menu', '=', False)]}"/>
-                </label>
             </field>
         </record>
 </odoo>
