@@ -35,14 +35,6 @@
                     </tr>
                 </t>
                 <t t-elif="data.state == 'sale'">
-                    <tr>
-                        <td>
-                            <strong>Reserved</strong><br/>
-                        </td>
-                        <td style="min-width: 50px; text-align: right;">
-                            <b t-esc='data.qty_available_today'/> <t t-esc='data.product_uom.data.display_name'/>
-                        </td>
-                    </tr>
                     <tr t-if="data.qty_available_today &lt; data.qty_to_deliver">
                         <td>
                             <span t-if="data.will_be_fulfilled and data.forecast_expected_date_str">
