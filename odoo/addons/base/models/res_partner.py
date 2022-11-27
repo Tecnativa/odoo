@@ -899,7 +899,7 @@ class Partner(models.Model):
         # field dependencies of method _display_address()
         return self._formatting_address_fields() + [
             'country_id.address_format', 'country_id.code', 'country_id.name',
-            'company_name', 'state_id.code', 'state_id.name',
+            'company_name',
         ]
 
     @api.model
