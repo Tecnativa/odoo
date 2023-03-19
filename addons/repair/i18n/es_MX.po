@@ -1416,6 +1416,12 @@ msgid "You cannot delete a completed repair order."
 msgstr "No puede eliminar una orden de reparación completada."
 
 #. module: repair
+#: code:addons/repair/models/repair.py:0
+#, python-format
+msgid "You cannot delete a completed repair order."
+msgstr ""
+
+#. module: repair
 #: code:addons/repair/models/repair.py:0 code:addons/repair/models/repair.py:0
 #, python-format
 msgid ""
