@@ -570,8 +570,12 @@ class AccountPayment(models.Model):
         ''' Ensure the 'payment_method_id' field is not null.
         Can't be done using the regular 'required=True' because the field is a computed editable stored one.
         '''
+        import logging
+        _logger = logging.getLogger(__name__)
         for pay in self:
             if not pay.payment_method_id:
+                _logger.info("Account payment without payment_method_id: ID: {} name: {}".format(pay.id, pay.name))
+                continue
                 raise ValidationError(_("Please define a payment method on your payment."))
 
     # -------------------------------------------------------------------------
