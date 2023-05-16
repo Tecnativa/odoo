@@ -557,6 +557,7 @@ class Product(models.Model):
             'warehouse_id': location.get_warehouse()
         })
         if rule in seen_rules:
+            breakpoint()
             raise UserError(_("Invalid rule's configuration, the following rule causes an endless loop: %s", rule.display_name))
         if not rule:
             return seen_rules
