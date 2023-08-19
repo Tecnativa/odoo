@@ -87,6 +87,22 @@ var KanbanView = View.extend({
         if (!this.dataset._sort.length && default_order) {
             this.dataset.set_sort(default_order.split(','));
         }
+
+        // Actualizar vista kanban de incidencias
+        var intervalTime = 60000;
+        if(this.dataset && this.dataset.model && this.dataset.model == "website.support.ticket"){
+            var thisInterval = this;
+            setInterval(function(){
+                var hash = location.hash.substr(1);
+                if(
+                    hash
+                    && hash.includes("model=website.support.ticket")
+                    && hash.includes("view_type=kanban")
+                ){
+                    thisInterval.do_reload();
+                }
+            }, intervalTime);
+        }
     },
 
     willStart: function() {
