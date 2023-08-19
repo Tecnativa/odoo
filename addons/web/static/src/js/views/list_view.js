@@ -1355,7 +1355,7 @@ ListView.Groups = Class.extend({
             self.bind_child_events(child);
             child.datagroup = group;
 
-            var $row = child.$row = $('<tr class="o_group_header">');
+            var $row = child.$row = $('<tr class="o_group_header o_group_header_' + group.grouped_on + '">');
             if (group.openable && group.length) {
                 $row.click(function (e) {
                     if (!$row.data('open')) {
