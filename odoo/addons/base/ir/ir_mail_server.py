@@ -426,6 +426,7 @@ class IrMailServer(models.Model):
         if mail_server:
             smtp_server = mail_server.smtp_host
             smtp_user = mail_server.smtp_user
+            smtp_from = mail_server.smtp_user
             smtp_password = mail_server.smtp_pass
             smtp_port = mail_server.smtp_port
             smtp_encryption = mail_server.smtp_encryption
