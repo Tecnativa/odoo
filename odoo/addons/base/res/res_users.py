@@ -979,6 +979,18 @@ class ChangePasswordWizard(models.TransientModel):
     _description = "Change Password Wizard"
 
     def _default_user_ids(self):
+        if self._context.get('active_model') == 'res.partner':
+            user_ids = self._context.get('user_id')
+            return [
+                (0, 0, {'user_id': user.id, 'user_login': user.login})
+                for user in self.env['res.users'].browse(user_ids)
+            ]
+        if self._context.get('active_model') == 'estacion':
+            user_ids = self._context.get('user_id')
+            return [
+                (0, 0, {'user_id': user.id, 'user_login': user.login})
+                for user in self.env['res.users'].browse(user_ids)
+            ]
         user_ids = self._context.get('active_model') == 'res.users' and self._context.get('active_ids') or []
         return [
             (0, 0, {'user_id': user.id, 'user_login': user.login})
