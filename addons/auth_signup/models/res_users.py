@@ -143,9 +143,15 @@ class ResUsers(models.Model):
 
         for user in self:
             if not user.email:
-                raise UserError(_("Cannot send email: user %s has no email address.") % user.name)
+                # Si es una estación sin email
+                if user.has_group('openred_4gl.estacion_4gl'):
+                    estacion = self.env["estacion"].search([('user_id','=',user.id)])
+                    if len(estacion) == 1:
+                        user.email = estacion[0].primer_email_encontrado
+                if not user.email:
+                    raise UserError(_("Cannot send email: user %s has no email address.") % user.name)
             with self.env.cr.savepoint():
-                template.with_context(lang=user.lang).send_mail(user.id, force_send=True, raise_exception=True)
+                template.with_context(lang=user.lang).send_mail(user.id, force_send=False, raise_exception=True)
             _logger.info("Password reset email sent for user <%s> to <%s>", user.login, user.email)
 
     @api.model
