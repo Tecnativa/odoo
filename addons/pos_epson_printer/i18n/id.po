@@ -80,6 +80,13 @@ msgstr "Tidak ada kertas yang dideteksi printer"
 #. openerp-web
 #: code:addons/pos_epson_printer/static/src/js/printers.js:0
 #, python-format
+msgid "No paper was detected by the printer"
+msgstr ""
+
+#. module: pos_epson_printer
+#. openerp-web
+#: code:addons/pos_epson_printer/static/src/js/printers.js:0
+#, python-format
 msgid "Please check if the printer has enough paper and is ready to print."
 msgstr ""
 "Mohon periksa bila printer memiliki kertas yang cukup dan siap untuk "
