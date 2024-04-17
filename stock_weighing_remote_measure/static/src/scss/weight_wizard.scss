@@ -11,6 +11,9 @@
         .o_input_weight {
             width: fit-content;
         }
+        div[name="device_selector"] {
+            cursor: pointer;
+        }
     }
     span.o_field_remote_device_start,
     span.o_field_remote_device_stop {

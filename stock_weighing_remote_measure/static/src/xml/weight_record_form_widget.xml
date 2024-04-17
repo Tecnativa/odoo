@@ -18,7 +18,12 @@
                             class="font-weight-bold text-success"
                             t-out="amount"
                         /> <span t-out="uom_name" class="text-success" />
-                        <div class="d-inline float-right text-dark" title="Device info">
+                        <div
+                            class="d-inline float-right text-dark"
+                            title="Device info"
+                            name="device_selector"
+                            role="button"
+                        >
                             <i class="fa fa-thermometer" /> <span t-out="device_name" />
                         </div>
                     </div>
@@ -37,7 +42,7 @@
                         <t t-set="color" t-value="colors[tare_index % colors.length]" />
                         <btn
                             t-attf-class="btn btn-outline-{{color}}"
-                            t-attf-data-tare="-{{tare.tare}}"
+                            t-att-data-tare="tare.tare"
                         >
                             -
                         </btn>
@@ -49,7 +54,7 @@
                         </btn>
                         <btn
                             t-attf-class="btn btn-outline-{{color}}"
-                            t-att-data-tare="tare.tare"
+                            t-attf-data-tare="-{{tare.tare}}"
                         >
                             +
                         </btn>
@@ -66,12 +71,11 @@
                                 aria-label="Minus"
                                 title="Minus"
                                 type="button"
-                                data-mode="minus"
+                                data-mode="plus"
                             />
                         </div>
                         <input
                             type="number"
-                            min="0"
                             step="0.1"
                             inputmode="decimal"
                             class="form-control text-center"
@@ -83,7 +87,7 @@
                                 aria-label="Plus"
                                 title="Plus"
                                 type="button"
-                                data-mode="plus"
+                                data-mode="minus"
                             />
                             <span class="input-group-text" t-out="uom_name" />
                         </div>

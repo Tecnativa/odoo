@@ -1,7 +1,9 @@
 /** @odoo-module **/
+import {_t, qweb} from "web.core";
+import Dialog from "web.Dialog";
 import {RemoteMeasure} from "@web_widget_remote_measure/js/remote_measure_widget.esm";
 import fieldRegistry from "web.field_registry";
-import {qweb} from "web.core";
+import session from "web.session";
 
 export const RemoteMeasureForm = RemoteMeasure.extend({
     _template: "weigh_remote_measure.RemoteMeasureForm",
@@ -21,6 +23,7 @@ export const RemoteMeasureForm = RemoteMeasure.extend({
             "focusin div[name='manual_tare'] input": "_onFocusInputTare",
             "change div[name='manual_tare'] input": "_onChangeInputTare",
             "click div[name='manual_tare'] button": "_onStepTare",
+            "click div[name='device_selector']": "_onDeviceSelector",
         }
     ),
     /**
@@ -50,7 +53,10 @@ export const RemoteMeasureForm = RemoteMeasure.extend({
      */
     _renderEdit() {
         const def = this._super(...arguments);
-        if (!this.remote_device_data) {
+        if (
+            !this.remote_device_data ||
+            this.uom_category !== this.device_uom_category
+        ) {
             return def;
         }
         this.amount = this.input_val;
@@ -67,6 +73,7 @@ export const RemoteMeasureForm = RemoteMeasure.extend({
         this.$el.find("btn[data-tare]").on("click", this._onClickTare.bind(this));
         this.$tare_amount = this.$el.find("span[name='tare_amount']");
         this.$real_amount = this.$el.find("span[name='real_amount']");
+        this.$device_selector = this.$el.find("div[name='device_selector']");
         const $weight_control = this.$el.find("div[name='weight_control']");
         // Tweak the base widget
         this.$start_measure.appendTo($weight_control);
@@ -115,8 +122,55 @@ export const RemoteMeasureForm = RemoteMeasure.extend({
     _onClickTare(ev) {
         ev.preventDefault();
         const tare = parseFloat(ev.currentTarget.dataset.tare);
-        this.tare = Math.max(0, this.tare + tare);
+        // This.tare = Math.max(0, this.tare + tare);
+        this.tare += tare;
         this._updateTare();
+    },
+    /**
+     * Simple decive selector, that allows a user to easily swith devices
+     * @param {Event} ev
+     */
+    _onDeviceSelector(ev) {
+        ev.preventDefault();
+        this.measure_stop();
+        this._rpc({
+            model: "remote.measure.device",
+            method: "search_read",
+            args: [],
+        }).then((devices) => {
+            const buttons = devices.map((device) => {
+                return {
+                    text: device.name,
+                    classes: "btn-dark btn-lg btn-block mb-2",
+                    close: true,
+                    click: () => {
+                        this._rpc({
+                            model: "res.users",
+                            method: "write",
+                            args: [
+                                [session.uid],
+                                {remote_measure_device_id: device.id},
+                            ],
+                        }).then(() => {
+                            this.trigger_up("reload");
+                        });
+                    },
+                };
+            });
+            buttons.push({
+                text: _t("Discard"),
+                classes: "btn-lg btn-light btn-block",
+                close: true,
+            });
+            new Dialog(this, {
+                $content: $("<h4>", {
+                    text: _t("Choose a device:"),
+                }),
+                size: "small",
+                buttons: buttons,
+                renderHeader: false,
+            }).open();
+        });
     },
     /**
      * Upgrade the measure counter
