@@ -12,6 +12,10 @@ class WeighingWizard(models.TransientModel):
         readonly=True,
     )
     uom_id = fields.Many2one(comodel_name="uom.uom", compute="_compute_uom_id")
+    # HACK: We need to force this relation. If we just duplicate the field declaration
+    # in the view with different `attrs` invisibility domain it doesn't have the
+    # expected effect. TODO: check if it works in >=16
+    weight_with_widget = fields.Float(related="weight", readonly=False)
 
     @api.depends("product_id", "selected_move_line_id")
     def _compute_uom_id(self):
