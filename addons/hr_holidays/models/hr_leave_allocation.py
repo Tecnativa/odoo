@@ -145,6 +145,7 @@ class HolidaysAllocation(models.Model):
          "(holiday_type='company' AND mode_company_id IS NOT NULL))",
          "The employee, department, company or employee category of this request is missing. Please make sure that your user login is linked to an employee."),
         ('duration_check', "CHECK( ( number_of_days > 0 AND allocation_type='regular') or (allocation_type != 'regular'))", "The duration must be greater than 0."),
+        ('dates_check', "CHECK(date_from <= date_to)", "The start date must be anterior to the end date."),
     ]
 
     # The compute does not get triggered without a depends on record creation

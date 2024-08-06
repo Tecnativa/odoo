@@ -1,5 +1,5 @@
 # Part of Odoo. See LICENSE file for full copyright and licensing details.
-
+from psycopg2 import IntegrityError
 from datetime import datetime, date, timedelta
 import time
 from dateutil.relativedelta import relativedelta
@@ -213,6 +213,19 @@ class TestLeaveRequests(TestHrHolidaysCommon):
         allocation_form.date_from = date(2019, 5, 6)
         allocation_form.date_to = date(2019, 5, 6)
         allocation = allocation_form.save()
+
+    @mute_logger('odoo.sql_db')
+    def test_allocation_constraint_dates_check(self):
+        with self.assertRaises(IntegrityError):
+            self.env['hr.leave.allocation'].create({
+                'name': 'Test allocation',
+                'holiday_status_id': self.holidays_type_2.id,
+                'number_of_days': 1,
+                'employee_id': self.employee_emp_id,
+                'state': 'confirm',
+                'date_from': time.strftime('%Y-%m-10'),
+                'date_to': time.strftime('%Y-%m-01'),
+            })
 
     @mute_logger('odoo.models.unlink', 'odoo.addons.mail.models.mail_mail')
     def test_employee_is_absent(self):
