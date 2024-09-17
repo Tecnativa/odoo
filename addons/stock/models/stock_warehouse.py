@@ -188,6 +188,17 @@ class Warehouse(models.Model):
 
         res = super().write(vals)
 
+        if vals.get('name'):
+            for warehouse in self:
+                for f_name in ("in_type_id", "out_type_id", "pack_type_id", "int_type_id"):
+                    picking_type = warehouse[f_name]
+                    sequence = picking_type.sequence_id
+                    sequence_vals = picking_type._prepare_ir_sequence_vals()
+                    # `ir.sequence` write access is limited to system user
+                    if self.user_has_groups('stock.group_stock_manager'):
+                        sequence = sequence.sudo()
+                    sequence.name = sequence_vals.get("name")
+
         for warehouse in warehouses:
             # check if we need to delete and recreate route
             depends = [depend for depends in [value.get('depends', []) for value in warehouse._get_routes_values().values()] for depend in depends]
@@ -322,7 +333,6 @@ class Warehouse(models.Model):
         exist it will be created with a new sequence associated to it.
         """
         self.ensure_one()
-        IrSequenceSudo = self.env['ir.sequence'].sudo()
         PickingType = self.env['stock.picking.type']
 
         # choose the next available color for the operation types of this warehouse
@@ -331,7 +341,6 @@ class Warehouse(models.Model):
         color = available_colors[0] if available_colors else 0
 
         warehouse_data = {}
-        sequence_data = self._get_sequence_values()
 
         # suit for each warehouse: reception, internal, pick, pack, ship
         max_sequence = self.env['stock.picking.type'].search_read([('sequence', '!=', False)], ['sequence'], limit=1, order='sequence desc')
@@ -342,15 +351,10 @@ class Warehouse(models.Model):
 
         for picking_type, values in data.items():
             if self[picking_type]:
-                self[picking_type].sudo().sequence_id.write(sequence_data[picking_type])
                 self[picking_type].write(values)
             else:
                 data[picking_type].update(create_data[picking_type])
-                existing_sequence = IrSequenceSudo.search_count([('company_id', '=', sequence_data[picking_type]['company_id']), ('name', '=', sequence_data[picking_type]['name'])], limit=1)
-                sequence = IrSequenceSudo.create(sequence_data[picking_type])
-                if existing_sequence:
-                    sequence.name = _("%(name)s (copy)(%(id)s)", name=sequence.name, id=str(sequence.id))
-                values.update(warehouse_id=self.id, color=color, sequence_id=sequence.id)
+                values.update(warehouse_id=self.id, color=color)
                 warehouse_data[picking_type] = PickingType.create(values).id
 
         if 'out_type_id' in warehouse_data:
@@ -899,16 +903,6 @@ class Warehouse(models.Model):
                         pull.write({'name': pull.name.replace(warehouse.name, new_name, 1)})
                 if warehouse.mto_pull_id:
                     warehouse.mto_pull_id.write({'name': warehouse.mto_pull_id.name.replace(warehouse.name, new_name, 1)})
-        for warehouse in self:
-            sequence_data = warehouse._get_sequence_values(name=new_name, code=new_code)
-            # `ir.sequence` write access is limited to system user
-            if self.user_has_groups('stock.group_stock_manager'):
-                warehouse = warehouse.sudo()
-            warehouse.in_type_id.sequence_id.write(sequence_data['in_type_id'])
-            warehouse.out_type_id.sequence_id.write(sequence_data['out_type_id'])
-            warehouse.pack_type_id.sequence_id.write(sequence_data['pack_type_id'])
-            warehouse.pick_type_id.sequence_id.write(sequence_data['pick_type_id'])
-            warehouse.int_type_id.sequence_id.write(sequence_data['int_type_id'])
 
     def _update_location_reception(self, new_reception_step):
         self.mapped('wh_qc_stock_loc_id').write({'active': new_reception_step == 'three_steps'})
@@ -972,7 +966,7 @@ class Warehouse(models.Model):
                 'sequence': max_sequence + 1,
                 'show_reserved': False,
                 'show_operations': False,
-                'sequence_code': 'IN',
+                'sequence_code': self.code + '/IN/',
                 'company_id': self.company_id.id,
             }, 'out_type_id': {
                 'name': _('Delivery Orders'),
@@ -981,7 +975,7 @@ class Warehouse(models.Model):
                 'use_existing_lots': True,
                 'default_location_dest_id': False,
                 'sequence': max_sequence + 5,
-                'sequence_code': 'OUT',
+                'sequence_code': self.code + '/OUT/',
                 'print_label': True,
                 'company_id': self.company_id.id,
             }, 'pack_type_id': {
@@ -992,7 +986,7 @@ class Warehouse(models.Model):
                 'default_location_src_id': self.wh_pack_stock_loc_id.id,
                 'default_location_dest_id': output_loc.id,
                 'sequence': max_sequence + 4,
-                'sequence_code': 'PACK',
+                'sequence_code': self.code + '/PACK/',
                 'company_id': self.company_id.id,
             }, 'pick_type_id': {
                 'name': _('Pick'),
@@ -1001,7 +995,7 @@ class Warehouse(models.Model):
                 'use_existing_lots': True,
                 'default_location_src_id': self.lot_stock_id.id,
                 'sequence': max_sequence + 3,
-                'sequence_code': 'PICK',
+                'sequence_code': self.code + '/PICK/',
                 'company_id': self.company_id.id,
             }, 'int_type_id': {
                 'name': _('Internal Transfers'),
@@ -1012,7 +1006,7 @@ class Warehouse(models.Model):
                 'default_location_dest_id': self.lot_stock_id.id,
                 'active': self.reception_steps != 'one_step' or self.delivery_steps != 'ship_only' or self.user_has_groups('stock.group_stock_multi_locations'),
                 'sequence': max_sequence + 2,
-                'sequence_code': 'INT',
+                'sequence_code': self.code + '/INT/',
                 'company_id': self.company_id.id,
             }, 'return_type_id': {
                 'name': _('Returns'),
@@ -1022,49 +1016,10 @@ class Warehouse(models.Model):
                 'default_location_src_id': False,
                 'sequence': max_sequence + 6,
                 'show_reserved': True,
-                'sequence_code': 'IN',
+                'sequence_code': self.code + '/IN/',
                 'company_id': self.company_id.id,
             },
         }, max_sequence + 6
-
-    def _get_sequence_values(self, name=False, code=False):
-        """ Each picking type is created with a sequence. This method returns
-        the sequence values associated to each picking type.
-        """
-        name = name if name else self.name
-        code = code if code else self.code
-        return {
-            'in_type_id': {
-                'name': name + ' ' + _('Sequence in'),
-                'prefix': code + '/IN/', 'padding': 5,
-                'company_id': self.company_id.id,
-            },
-            'out_type_id': {
-                'name': name + ' ' + _('Sequence out'),
-                'prefix': code + '/OUT/', 'padding': 5,
-                'company_id': self.company_id.id,
-            },
-            'pack_type_id': {
-                'name': name + ' ' + _('Sequence packing'),
-                'prefix': code + '/PACK/', 'padding': 5,
-                'company_id': self.company_id.id,
-            },
-            'pick_type_id': {
-                'name': name + ' ' + _('Sequence picking'),
-                'prefix': code + '/PICK/', 'padding': 5,
-                'company_id': self.company_id.id,
-            },
-            'int_type_id': {
-                'name': name + ' ' + _('Sequence internal'),
-                'prefix': code + '/INT/', 'padding': 5,
-                'company_id': self.company_id.id,
-            },
-            'return_type_id': {
-                'name': name + ' ' + _('Sequence return'),
-                'prefix': code + '/RET/', 'padding': 5,
-                'company_id': self.company_id.id,
-            },
-        }
 
     def _format_rulename(self, from_loc, dest_loc, suffix):
         rulename = '%s: %s' % (self.code, from_loc.name)
