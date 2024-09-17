@@ -122,16 +122,18 @@ class PickingType(models.Model):
                     raise UserError(_("Changing the company of this record is forbidden at this point, you should rather archive it and create a new one."))
         if 'sequence_code' in vals:
             for picking_type in self:
+                old_prefix = picking_type.sequence_id.prefix
+                new_prefix = old_prefix.replace(picking_type.sequence_code, vals['sequence_code'])
                 if picking_type.warehouse_id:
                     picking_type.sequence_id.sudo().write({
                         'name': picking_type.warehouse_id.name + ' ' + _('Sequence') + ' ' + vals['sequence_code'],
-                        'prefix': picking_type.warehouse_id.code + '/' + vals['sequence_code'] + '/', 'padding': 5,
+                        'prefix': new_prefix, 'padding': 5,
                         'company_id': picking_type.warehouse_id.company_id.id,
                     })
                 else:
                     picking_type.sequence_id.sudo().write({
                         'name': _('Sequence') + ' ' + vals['sequence_code'],
-                        'prefix': vals['sequence_code'], 'padding': 5,
+                        'prefix': new_prefix, 'padding': 5,
                         'company_id': picking_type.env.company.id,
                     })
         return super(PickingType, self).write(vals)
