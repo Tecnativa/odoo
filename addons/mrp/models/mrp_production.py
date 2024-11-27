@@ -1157,8 +1157,6 @@ class MrpProduction(models.Model):
         for production in self:
             if production.bom_id:
                 production.consumption = production.bom_id.consumption
-            if not production.move_raw_ids:
-                raise UserError(_("Add some materials to consume before marking this MO as to do."))
             # In case of Serial number tracking, force the UoM to the UoM of product
             if production.product_tracking == 'serial' and production.product_uom_id != production.product_id.uom_id:
                 production.write({

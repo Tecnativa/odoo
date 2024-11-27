@@ -33,23 +33,29 @@ class ChangeProductionQty(models.TransientModel):
         modification during production would not be taken into consideration.
         """
         modification = {}
+        push_moves = self.env['stock.move']
         for move in production.move_finished_ids:
             if move.state in ('done', 'cancel'):
                 continue
-            done_qty = sum(production.move_finished_ids.filtered(
-                lambda r:
-                    r.product_id == move.product_id and
-                    r.state == 'done'
-                ).mapped('product_uom_qty')
-            )
-            qty = (new_qty - old_qty) * move.unit_factor + done_qty
+            qty = (new_qty - old_qty) * move.unit_factor
             modification[move] = (move.product_uom_qty + qty, move.product_uom_qty)
-            if (move.product_uom_qty + qty) > 0:
-                move.write({'product_uom_qty': move.product_uom_qty + qty})
+            if self._need_quantity_propagation(move, qty):
+                push_moves |= move.copy({'product_uom_qty': qty})
             else:
-                move._action_cancel()
+                self._update_product_qty(move, qty)
+
+        if push_moves:
+            push_moves._action_confirm()._action_assign()
 
         return modification
+
+    @api.model
+    def _need_quantity_propagation(self, move, qty):
+        return move.move_dest_ids and not float_is_zero(qty, precision_rounding=move.product_uom.rounding)
+
+    @api.model
+    def _update_product_qty(self, move, qty):
+        move.write({'product_uom_qty': move.product_uom_qty + qty})
 
     def change_prod_qty(self):
         precision = self.env['decimal.precision'].precision_get('Product Unit of Measure')

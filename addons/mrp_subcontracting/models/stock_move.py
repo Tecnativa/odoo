@@ -52,7 +52,7 @@ class StockMove(models.Model):
         subcontract order to the new quantity.
         """
         if 'product_uom_qty' in values and self.env.context.get('cancel_backorder') is not False:
-            self.filtered(lambda m: m.is_subcontract and m.state not in ['draft', 'cancel', 'done'])._update_subcontract_order_qty(values['product_uom_qty'])
+            self.filtered(lambda m: m.is_subcontract and m.state not in ['draft', 'cancel', 'done'] and float_compare(m.product_uom_qty, values['product_uom_qty'], precision_rounding=m.product_uom.rounding) != 0)._update_subcontract_order_qty(values['product_uom_qty'])
         res = super().write(values)
         if 'date' in values:
             for move in self:
@@ -107,7 +107,6 @@ class StockMove(models.Model):
 
     def _action_confirm(self, merge=True, merge_into=False):
         subcontract_details_per_picking = defaultdict(list)
-        move_to_not_merge = self.env['stock.move']
         for move in self:
             if move.location_id.usage != 'supplier' or move.location_dest_id.usage == 'supplier':
                 continue
@@ -119,21 +118,24 @@ class StockMove(models.Model):
             if float_is_zero(move.product_qty, precision_rounding=move.product_uom.rounding) and\
                     move.picking_id.immediate_transfer is True:
                 raise UserError(_("To subcontract, use a planned transfer."))
-            subcontract_details_per_picking[move.picking_id].append((move, bom))
             move.write({
                 'is_subcontract': True,
                 'location_id': move.picking_id.partner_id.with_company(move.company_id).property_stock_subcontractor.id
             })
-            move_to_not_merge |= move
+            if float_compare(move.product_qty, 0, precision_rounding=move.product_uom.rounding) <= 0:
+                # If a subcontracted amount is decreased, don't create a MO that would be for a negative value.
+                # We don't care if the MO decreases even when done since everything is handled through picking
+                continue
+        res = super()._action_confirm(merge=merge, merge_into=merge_into)
+        for move in res:
+            if move.is_subcontract:
+                subcontract_details_per_picking[move.picking_id].append((move, move._get_subcontract_bom()))
         for picking, subcontract_details in subcontract_details_per_picking.items():
             picking._subcontracted_produce(subcontract_details)
 
-        # We avoid merging move due to complication with stock.rule.
-        res = super(StockMove, move_to_not_merge)._action_confirm(merge=False)
-        res |= super(StockMove, self - move_to_not_merge)._action_confirm(merge=merge, merge_into=merge_into)
         if subcontract_details_per_picking:
             self.env['stock.picking'].concat(*list(subcontract_details_per_picking.keys())).action_assign()
-        return res.exists()
+        return res
 
     def _action_record_components(self):
         self.ensure_one()
@@ -202,16 +204,31 @@ class StockMove(models.Model):
     def _update_subcontract_order_qty(self, new_quantity):
         for move in self:
             quantity_to_remove = move.product_uom_qty - new_quantity
-            productions = move.move_orig_ids.production_id.filtered(lambda p: p.state not in ('done', 'cancel'))[::-1]
-            # Cancel productions until reach new_quantity
-            for production in productions:
-                if quantity_to_remove <= 0.0:
+            move._reduce_subcontract_order_qty(quantity_to_remove)
+
+    def _reduce_subcontract_order_qty(self, quantity_to_remove):
+        self.ensure_one()
+        productions = self.move_orig_ids.production_id.filtered(lambda p: p.state not in ('done', 'cancel'))[::-1]
+        wip_production = productions[0] if self._context.get('transfer_qty') and len(productions) > 1 else self.env['mrp.production']
+
+        # Transfer removed qty to WIP production
+        if wip_production:
+            self.env['change.production.qty'].with_context(skip_activity=True).create({
+                'mo_id': wip_production.id,
+                'product_qty': wip_production.product_qty + quantity_to_remove
+            }).change_prod_qty()
+
+        # Cancel productions until reach new_quantity
+        for production in (productions - wip_production):
+            if quantity_to_remove >= production.product_qty:
+                quantity_to_remove -= production.product_qty
+                production.with_context(skip_activity=True).action_cancel()
+            else:
+                if float_is_zero(quantity_to_remove, precision_rounding=production.product_uom_id.rounding):
+                    # No need to do change_prod_qty for no change at all.
                     break
-                if quantity_to_remove >= production.product_qty:
-                    quantity_to_remove -= production.product_qty
-                    production.with_context(skip_activity=True).action_cancel()
-                else:
-                    self.env['change.production.qty'].with_context(skip_activity=True).create({
-                        'mo_id': production.id,
-                        'product_qty': production.product_uom_qty - quantity_to_remove
-                    }).change_prod_qty()
+                self.env['change.production.qty'].with_context(skip_activity=True).create({
+                    'mo_id': production.id,
+                    'product_qty': production.product_qty - quantity_to_remove
+                }).change_prod_qty()
+                break
