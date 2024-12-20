@@ -749,11 +749,16 @@ class AccountReconcileModel(models.Model):
         self.env['account.move'].flush_model()
         self.env['account.move.line'].flush_model()
 
+        match_text_location_mapped_fields = {
+            "account_move_line.name": "match_text_location_label",
+            "account_move_line__move_id.name": "match_text_location_note",
+            "account_move_line__move_id.ref": "match_text_location_reference"
+        }
         aml_domain = self._get_invoice_matching_amls_domain(st_line, partner)
         query = self.env['account.move.line']._where_calc(aml_domain)
         tables, where_clause, where_params = query.get_sql()
 
-        sub_queries = []
+        numerical_sub_queries = exact_sub_queries = []
         all_params = []
         aml_cte = ''
         numerical_tokens, exact_tokens, _text_tokens = self._get_invoice_matching_st_line_tokens(st_line)
@@ -773,46 +778,49 @@ class AccountReconcileModel(models.Model):
                 )
             '''
             all_params += where_params
+        base_sub_query = '''
+            SELECT
+                account_move_line_id as id,
+                account_move_line_date as date,
+                account_move_line_date_maturity as date_maturity
+            FROM aml_cte
+        '''
+        table_alias_field_mapped = (
+            ('account_move_line', 'name'),
+            ('account_move_line__move_id', 'name'),
+            ('account_move_line__move_id', 'ref'),
+        )
         if numerical_tokens:
-            for table_alias, field in (
-                ('account_move_line', 'name'),
-                ('account_move_line__move_id', 'name'),
-                ('account_move_line__move_id', 'ref'),
-            ):
-                sub_queries.append(rf'''
-                    SELECT
-                        account_move_line_id as id,
-                        account_move_line_date as date,
-                        account_move_line_date_maturity as date_maturity,
-                        UNNEST(
-                            REGEXP_SPLIT_TO_ARRAY(
+            for table_alias, field in table_alias_field_mapped:
+                match_text_location_key = rf"{table_alias}.{field}"
+                if self[match_text_location_mapped_fields[match_text_location_key]]:
+                    sub_query = rf'''
+                        {base_sub_query}
+                        WHERE
                                 SUBSTRING(
                                     REGEXP_REPLACE({table_alias}_{field}, '[^0-9\s]', '', 'g'),
                                     '\S(?:.*\S)*'
-                                ),
-                                '\s+'
-                            )
-                        ) AS token
-                    FROM aml_cte
-                    WHERE {table_alias}_{field} IS NOT NULL
-                ''')
+                                )
+
+                    '''
+                    sub_query += rf" = '{numerical_tokens[0]}'" if len(numerical_tokens) == 1 else rf" IN {tuple(numerical_tokens)}"
+                    numerical_sub_queries.append(sub_query)
+            if not numerical_sub_queries:
+                numerical_sub_queries.append(base_sub_query)
 
         if exact_tokens:
-            for table_alias, field in (
-                ('account_move_line', 'name'),
-                ('account_move_line__move_id', 'name'),
-                ('account_move_line__move_id', 'ref'),
-            ):
-                sub_queries.append(rf'''
-                    SELECT
-                        account_move_line_id as id,
-                        account_move_line_date as date,
-                        account_move_line_date_maturity as date_maturity,
-                        {table_alias}_{field} AS token
-                    FROM aml_cte
-                    WHERE COALESCE({table_alias}_{field}, '') != ''
-                ''')
-
+            for table_alias, field in table_alias_field_mapped:
+                match_text_location_key = rf"{table_alias}.{field}"
+                if self[match_text_location_mapped_fields[match_text_location_key]]:
+                    sub_query = rf'''
+                        {base_sub_query}
+                        WHERE {table_alias}_{field}
+                    '''
+                    sub_query += rf" = '{exact_tokens[0]}'" if len(exact_tokens) == 1 else rf" IN {tuple(exact_tokens)}"
+                    exact_sub_queries.append(sub_query)
+            if not exact_sub_queries:
+                exact_sub_queries.append(base_sub_query)
+        sub_queries = numerical_sub_queries + exact_sub_queries
         if sub_queries:
             order_by = get_order_by_clause(alias='sub')
             self._cr.execute(
@@ -822,12 +830,11 @@ class AccountReconcileModel(models.Model):
                         sub.id,
                         COUNT(*) AS nb_match
                     FROM (''' + ' UNION ALL '.join(sub_queries) + ''') AS sub
-                    WHERE sub.token IN %s
                     GROUP BY sub.date_maturity, sub.date, sub.id
                     HAVING COUNT(*) > 0
                     ORDER BY nb_match DESC, ''' + order_by + '''
                 ''',
-                all_params + [tuple(numerical_tokens + exact_tokens)],
+                all_params
             )
             candidate_ids = [r[0] for r in self._cr.fetchall()]
             if candidate_ids:
