@@ -1477,6 +1477,12 @@ Attempting to double-book your time off won't magically make your vacation 2x be
             ('calendar_id', '=', self.resource_calendar_id.id),
             ('display_type', '=', False),
             ('day_period', '!=', 'lunch'),
+            "|",
+            ("date_from", "<=", request_date_from),
+            ("date_from", "=", False),
+            "|",
+            ("date_to", ">=", request_date_from),
+            ("date_to", "=", False),
         ]
         # In the case of flexible hours, we resort to centering the holiday hours around 12pm
         if self.resource_calendar_id.flexible_hours:
@@ -1508,7 +1514,9 @@ Attempting to double-book your time off won't magically make your vacation 2x be
 
         start_week_type = 0
         end_week_type = 0
-        if self.resource_calendar_id.two_weeks_calendar:
+        # We will not take into account the entire logic of two_weeks_calendar if there are no attendances, for example, because
+        # we are trying to create a leave with a date before to the start date defined in the employee's calendar.
+        if self.resource_calendar_id.two_weeks_calendar and attendances:
             start_week_type = self.env['resource.calendar.attendance'].get_week_type(request_date_from)
             end_week_type = self.env['resource.calendar.attendance'].get_week_type(request_date_to)
 
