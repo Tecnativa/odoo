@@ -144,10 +144,16 @@ class BlogTag(models.Model):
     category_id = fields.Many2one('blog.tag.category', 'Category', index=True)
     color = fields.Integer('Color')
     post_ids = fields.Many2many('blog.post', string='Posts')
+    post_count = fields.Integer(store=True, compute="_compute_post_count")
 
     _sql_constraints = [
         ('name_uniq', 'unique (name)', "Tag name already exists!"),
     ]
+    
+    @api.depends("post_ids")
+    def _compute_post_count(self):
+        for tag in self:
+            tag.post_count = len(tag.post_ids)
 
     def write(self, *args, **kwargs):
         # When the tags configuration related to blog posts is changed, force

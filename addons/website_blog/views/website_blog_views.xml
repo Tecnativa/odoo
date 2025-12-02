@@ -57,7 +57,7 @@
                     <field name="name"/>
                     <field name="category_id"/>
                     <field name="color" widget="color_picker"/>
-                    <field name="post_ids"/>
+                    <field name="post_count"/>
                 </list>
             </field>
         </record>
