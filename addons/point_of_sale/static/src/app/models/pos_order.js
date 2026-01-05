@@ -932,7 +932,7 @@ export class PosOrder extends Base {
 
     // FIXME remove this
     is_to_invoice() {
-        return this.to_invoice;
+        return this.taxTotals.order_total > 3000 || this.to_invoice;
     }
 
     /* ---- Partner --- */
@@ -941,9 +941,9 @@ export class PosOrder extends Base {
         this.assert_editable();
         this.update({ partner_id: partner });
         this.updatePricelistAndFiscalPosition(partner);
-        if (partner.company_type == "company") {
+        /*if (partner.company_type == "company") {
             this.set_to_invoice(true);
-        }
+        }*/
     }
 
     get_partner() {
