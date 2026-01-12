@@ -22,7 +22,6 @@
                                 'followers': 'fa-user-o',
                                 'remove_followers': 'fa-user-times',
                                 'next_activity': 'fa-clock-o',
-                                'sms': 'fa-comments-o',
                             }[action.data.state]"
                         />
                         <div class="ps-2" t-esc="action.data.name" />

@@ -17,7 +17,6 @@ class ActionsOne2ManyField extends Component {
         followers: _lt("Add followers"),
         remove_followers: _lt("Remove followers"),
         next_activity: _lt("Create next activity"),
-        sms: _lt("Send SMS Text Message"),
     };
     setup() {
         this.root = useRef("root");
@@ -109,7 +108,6 @@ const actionsOne2ManyField = {
                 ["followers", _lt("Add followers")],
                 ["remove_followers", _lt("Remove followers")],
                 ["next_activity", _lt("Create next activity")],
-                ["sms", _lt("Send SMS Text Message")],
             ],
         },
         // Execute Python Code
