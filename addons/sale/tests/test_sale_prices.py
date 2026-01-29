@@ -108,8 +108,10 @@ class TestSalePrices(SaleCommon):
                 'product_id': self.product.id,
             })
 
-            self.assertAlmostEqual(order_line.pricelist_item_id, pricelist_rule)
-            self.assertAlmostEqual(order_line.price_unit, self.product.lst_price)
+            self.assertEqual(order_line.pricelist_item_id, pricelist_rule)
+            self.assertEqual(
+                order_line.price_unit,
+                self.product.lst_price)
             self.assertEqual(order_line.discount, 10)
 
             # Create an order tomorrow, add line today, rule active today doesn't work
@@ -388,9 +390,9 @@ class TestSalePrices(SaleCommon):
             order_form.pricelist_id = pricelist_b
             with order_form.order_line.new() as line_form:
                 line_form.product_id = self.product
-                self.assertAlmostEqual(line_form.price_unit, 0.825)
+                self.assertEqual(line_form.price_unit, 0.83)
                 line_form.product_uom_qty = 1000
-                self.assertAlmostEqual(line_form.price_unit, 0.55)
+                self.assertEqual(line_form.price_unit, 0.55)
 
     def test_compute_price_unit_no_currency(self):
         new_order = self.env['sale.order'].new({

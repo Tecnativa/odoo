@@ -263,7 +263,7 @@ class TestStockLandedCostsRounding(TestStockLandedCostsCommon):
         landed_costs.compute_landed_cost()
         landed_costs.button_validate()
 
-        self.assertAlmostEqual(self.product_a.standard_price, 7.4742857)
+        self.assertEqual(self.product_a.standard_price, 7.47)
 
         deliveries = self.env['stock.picking'].create([{
             'picking_type_id': self.warehouse.out_type_id.id,

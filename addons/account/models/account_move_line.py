@@ -356,7 +356,7 @@ class AccountMoveLine(models.Model):
     price_unit = fields.Float(
         string='Unit Price',
         compute="_compute_price_unit", store=True, readonly=False, precompute=True,
-        min_display_digits='Product Price',
+        digits='Product Price',
     )
     price_subtotal = fields.Monetary(
         string='Subtotal',
