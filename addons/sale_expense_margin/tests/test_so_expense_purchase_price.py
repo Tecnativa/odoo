@@ -80,6 +80,22 @@ class TestExpenseMargin(TestExpenseCommon):
         expense_sheet.action_approve_expense_sheets()
         expense_sheet.action_sheet_move_post()
 
-        for line, expected_purchase_price in zip(sale_order.order_line[1:], [86.96, 100.0, 869.5666667, 1000.0]):
-            self.assertAlmostEqual(line.purchase_price, expected_purchase_price)
-            self.assertTrue(line.is_expense)
+        self.assertRecordValues(sale_order.order_line[1:], [
+            # Expense lines:
+            {
+                'purchase_price': 86.96,
+                'is_expense': True,
+            },
+            {
+                'purchase_price': 100.0,
+                'is_expense': True,
+            },
+            {
+                'purchase_price': 869.57,
+                'is_expense': True,
+            },
+            {
+                'purchase_price': 1000.0,
+                'is_expense': True,
+            },
+        ])

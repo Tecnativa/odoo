@@ -744,8 +744,7 @@ class TestValuationReconciliation(ValuationReconciliationTestCommon):
         bill.invoice_date = fields.Date.today()
         bill.action_post()
         svls = self.env['stock.valuation.layer'].search([])
-        self.assertRecordValues(svls, [{'value': 4809.92, 'remaining_value': 4809.92}])
-        self.assertAlmostEqual(svls.unit_cost, 0.87452999)
+        self.assertRecordValues(svls, [{'value': 4809.92, 'remaining_value': 4809.92, 'unit_cost': 0.875}])
 
     @freeze_time('2024-01-01')
     def test_exchange_rate_return_after_reception(self):
