@@ -286,11 +286,11 @@
 
     <!-- Menus -->
 
-    <menuitem id="menu_hr_attendance_root" name="Attendances" sequence="205" groups="hr_attendance.group_hr_attendance_officer" web_icon="hr_attendance,static/description/icon.png"/>
+    <menuitem id="menu_hr_attendance_root" name="Attendances" sequence="205" groups="hr_attendance.group_hr_attendance_own_reader" web_icon="hr_attendance,static/description/icon.png"/>
 
     <menuitem id="menu_hr_attendance_kiosk_no_user_mode" name="Kiosk Mode" parent="menu_hr_attendance_root" sequence="10" groups="hr_attendance.group_hr_attendance_manager" action="open_kiosk_url"/>
 
-    <menuitem id="menu_hr_attendance_reporting" name="Reporting" parent="menu_hr_attendance_root" sequence="15" groups="hr_attendance.group_hr_attendance_officer" action="hr_attendance_reporting"/>
+    <menuitem id="menu_hr_attendance_reporting" name="Reporting" parent="menu_hr_attendance_root" sequence="15" groups="hr_attendance.group_hr_attendance_own_reader" action="hr_attendance_reporting"/>
 
-    <menuitem id="menu_hr_attendance_view_attendances" name="Overview" parent="menu_hr_attendance_root" sequence="5" groups="hr_attendance.group_hr_attendance_officer" action="hr_attendance_action"/>
+    <menuitem id="menu_hr_attendance_view_attendances" name="Overview" parent="menu_hr_attendance_root" sequence="5" groups="hr_attendance.group_hr_attendance_own_reader" action="hr_attendance_action"/>
 </odoo>
