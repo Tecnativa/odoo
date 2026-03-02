@@ -39,7 +39,14 @@ class IrWebsocket(models.AbstractModel):
     @add_guest_to_context
     def _build_presence_channel_list(self, presences):
         channels = super()._build_presence_channel_list(presences)
-        guest_ids = [int(p[1]) for p in presences if p[0] == "mail.guest"]
+        guest_ids = []
+        for p in presences or []:
+            if p[0] != "mail.guest":
+                continue
+            try:
+                guest_ids.append(int(p[1]))
+            except (TypeError, ValueError):
+                continue
         if self.env.user and self.env.user._is_internal():
             channels.extend(
                 (guest, "presence")
