@@ -1412,7 +1412,11 @@ class AccountMove(models.Model):
             domain = [
                 ('account_id', 'in', pay_term_lines.account_id.ids),
                 ('parent_state', '=', 'posted'),
+<<<<<<< HEAD
                 '|', *move._check_company_domain(move.company_id), ('company_id', 'child_of', move.company_id.id),
+=======
+                *move._check_company_domain(move.company_id),
+>>>>>>> a7ec26e96 ([FIX] account: filter outstanding credits_debits by invoice company)
                 ('partner_id', '=', move.commercial_partner_id.id),
                 ('reconciled', '=', False),
                 '|', ('amount_residual', '!=', 0.0), ('amount_residual_currency', '!=', 0.0),
