@@ -789,6 +789,7 @@ class TestItEdiExport(TestItEdi):
 
         uom_nodes = invoice_tree.xpath("//*[local-name()='DettaglioLinee']/*[local-name()='UnitaMisura']")
         self.assertEqual(uom_nodes[0].text, 'm2')
+<<<<<<< HEAD
 
     def test_reset_to_draft_l10n_it_edi_transaction(self):
         """
@@ -809,3 +810,5 @@ class TestItEdiExport(TestItEdi):
         })
         bill.action_post()
         self.assertEqual(bill.show_reset_to_draft_button, True)
+=======
+>>>>>>> c2eda1b5c ([FIX] l10n_it_edi: normalize UoM's non-standard Unicode chars in XML)
