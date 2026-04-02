@@ -243,11 +243,11 @@ class TestMyInvoisPoS(TestPoSCommon):
             self.assertTrue(tax_inclusive_node, "TaxInclusiveAmount node is missing from the XML.")
             expected_total = tax_inclusive_node[0].text
 
+<<<<<<< HEAD
             self.assertFalse(xml_tree.xpath("cac:PrepaidPayment", namespaces=NS_MAP), "PrepaidPayment node should be omitted when there is no genuine prepayment.")
+=======
+            self._assert_node_values(xml_tree, "cac:PrepaidPayment/cbc:PaidAmount", '0.00')
             self._assert_node_values(xml_tree, "cac:LegalMonetaryTotal/cbc:PayableAmount", expected_total)
-
-    @mute_logger('odoo.addons.point_of_sale.models.pos_order')
-    def test_send_consolidated_invoice(self):
         with freeze_time("2025-01-01"):
             # Create the orders
             with self.with_pos_session():
