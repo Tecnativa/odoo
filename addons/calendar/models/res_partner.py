@@ -75,7 +75,7 @@ class Partner(models.Model):
                 'attendee_id': attendee.id,
                 'is_alone': attendee.event_id.is_organizer_alone and attendee_is_organizer,
                 # attendees data is sorted according to this key in JS.
-                'is_organizer': 1 if attendee.partner_id == attendee.event_id.user_id.partner_id else 0,
+                'is_organizer': 1 if attendee.partner_id == attendee.event_id.sudo().user_id.partner_id else 0,
             })
         return attendees_details
 
