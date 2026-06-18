@@ -69,7 +69,7 @@ class Partner(models.Model):
             attendee_is_organizer = self.env.user == attendee.event_id.user_id and attendee.partner_id == self.env.user.partner_id
             attendees_details.append({
                 'id': attendee.partner_id.id,
-                'name': attendee.partner_id.display_name,
+                'name': attendee.partner_id.sudo().display_name,
                 'status': attendee.state,
                 'event_id': attendee.event_id.id,
                 'attendee_id': attendee.id,
