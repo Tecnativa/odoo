@@ -46,6 +46,7 @@ export class AnalyticDistribution extends Component {
         force_applicability: { type: String, optional: true },
         allow_save: { type: Boolean, optional: true },
         multi_edit: { type: Boolean, optional: true },
+        context: {type: Object},
     }
 
     setup(){
@@ -393,7 +394,9 @@ export class AnalyticDistribution extends Component {
             context: [],
         }
         // batched call
-        const records = await this.batchedOrm.read("account.analytic.account", domain[0][2], args.fields, {});
+        const records = await this.batchedOrm.read("account.analytic.account", domain[0][2], args.fields, {
+            context: this.props.context,
+        });
         return Object.assign({}, ...records.map((r) => {
             const {id, ...rest} = r;
             return {[id]: rest};
@@ -729,7 +732,7 @@ export const analyticDistribution = {
             availableTypes: ["many2one"],
         }
     ],
-    extractProps: ({ attrs, options }) => ({
+    extractProps: ({ attrs, options }, {context}) => ({
         business_domain: options.business_domain,
         account_field: options.account_field,
         product_field: options.product_field,
@@ -738,6 +741,7 @@ export const analyticDistribution = {
         force_applicability: options.force_applicability,
         allow_save: !options.disable_save,
         multi_edit: options.multi_edit,
+        context,
     }),
 };
 

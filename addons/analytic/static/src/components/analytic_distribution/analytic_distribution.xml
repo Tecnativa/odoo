@@ -55,6 +55,7 @@
                                                name="field"
                                                record="data.record"
                                                domain="data.record.fields[field].domain"
+                                               context="props.context"
                                                canOpen="false"
                                                canCreate="false"
                                                canCreateEdit="false"

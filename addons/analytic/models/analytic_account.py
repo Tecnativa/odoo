@@ -107,6 +107,9 @@ class AccountAnalyticAccount(models.Model):
                 name = f'[{analytic.code}] {name}'
             if analytic.partner_id.commercial_partner_id.name:
                 name = f'{name} - {analytic.partner_id.commercial_partner_id.name}'
+            # custom
+            if self.env.context.get("show_analytic_account_balance"):
+                name = f'{name} ({analytic.balance})'
             analytic.display_name = name
 
     def copy_data(self, default=None):
