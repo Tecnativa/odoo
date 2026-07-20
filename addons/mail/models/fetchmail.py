@@ -16,7 +16,7 @@ from odoo.exceptions import UserError, ValidationError
 
 
 _logger = logging.getLogger(__name__)
-MAX_POP_MESSAGES = 50
+MAX_POP_MESSAGES = 100
 MAIL_TIMEOUT = 60
 
 # Workaround for Python 2.7.8 bug https://bugs.python.org/issue23906
