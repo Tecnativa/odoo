@@ -2044,10 +2044,10 @@ class Screencaster:
         self.browser._websocket_send('Page.startScreencast')
 
     def __call__(self, sessionId, data, metadata):
-        self.browser._websocket_send('Page.screencastFrameAck', params={'sessionId': sessionId})
         if self.stopped:
             # if already stopped, drop the frames as we might have removed the directory already
             return
+        self.browser._websocket_send('Page.screencastFrameAck', params={'sessionId': sessionId})
         outfile = self.frames_dir / f'frame_{len(self.frames):05d}.png'
         try:
             outfile.write_bytes(binascii.a2b_base64(data.encode()))
