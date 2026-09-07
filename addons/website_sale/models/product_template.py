@@ -795,13 +795,84 @@ class ProductTemplate(models.Model):
         with_price = 'detail' in mapping
         results_data = super()._search_render_results(fetch_fields, mapping, icon, limit)
         current_website = self.env['website'].get_current_website()
+        pricelist = current_website.pricelist_id
+        currency = current_website.currency_id
+        if with_price:
+            prices = pricelist._get_products_price(
+                self,
+                1.0,
+                target_currency=currency,
+            )
+            list_prices = self._price_compute('list_price')
+            show_compare_price = self.env.user.has_group(
+                'website_sale.group_product_price_comparison'
+            )
+            fiscal_position = current_website.fiscal_position_id.sudo()
         for product, data in zip(self, results_data):
             categ_ids = product.public_categ_ids.filtered(lambda c: not c.website_id or c.website_id == current_website)
             if with_price:
-                combination_info = product._get_combination_info(only_template=True)
-                data['price'], list_price = self._search_render_results_prices(
-                    mapping, combination_info
+                price = prices[product.id]
+                list_price = list_prices[product.id]
+                compare_list_price = (
+                    product.compare_list_price if show_compare_price else None
                 )
+                if product.currency_id != currency:
+                    list_price = product.currency_id._convert(
+                        list_price,
+                        currency,
+                        self.env.company,
+                        fields.Date.context_today(self),
+                    )
+                    if compare_list_price:
+                        compare_list_price = product.currency_id._convert(
+                            compare_list_price,
+                            currency,
+                            self.env.company,
+                            fields.Date.context_today(self),
+                            round=False,
+                        )
+                has_discounted_price = (
+                    pricelist.discount_policy == 'without_discount'
+                    and currency.compare_amounts(list_price, price) == 1
+                )
+                product_taxes = product.sudo().taxes_id._filter_taxes_by_company(
+                    self.env.company
+                )
+                if product_taxes:
+                    taxes = fiscal_position.map_tax(product_taxes)
+                    price = self._apply_taxes_to_price(
+                        price,
+                        currency,
+                        product_taxes,
+                        taxes,
+                        product,
+                    )
+                    list_price = self._apply_taxes_to_price(
+                        list_price,
+                        currency,
+                        product_taxes,
+                        taxes,
+                        product,
+                    )
+                prevent_zero_price_sale = (
+                    current_website.prevent_zero_price_sale
+                    and float_is_zero(
+                        price,
+                        precision_rounding=currency.rounding,
+                    )
+                )
+                if prevent_zero_price_sale:
+                    compare_list_price = 0
+                if pricelist.discount_policy != 'without_discount':
+                    list_price = price
+                combination_info = {
+                    'price': price,
+                    'list_price': list_price,
+                    'has_discounted_price': has_discounted_price,
+                    'compare_list_price': compare_list_price,
+                    'prevent_zero_price_sale': prevent_zero_price_sale,
+                }
+                data['price'], list_price = self._search_render_results_prices(mapping, combination_info)
                 if list_price:
                     data['list_price'] = list_price
 
