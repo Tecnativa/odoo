@@ -170,15 +170,16 @@ class StockPicking(models.Model):
         self.carrier_price = self.carrier_id.with_context(order=self.sale_id)._apply_margins(res['exact_price'])
         if res['tracking_number']:
             related_pickings = self.env['stock.picking'] if self.carrier_tracking_ref and res['tracking_number'] in self.carrier_tracking_ref else self
-            accessed_moves = previous_moves = self.move_ids.move_orig_ids
+            moves = self.move_ids.filtered(lambda move: not move.origin_returned_move_id)
+            accessed_moves = previous_moves = moves.move_orig_ids.filtered(lambda move: not move.origin_returned_move_id)
             while previous_moves:
                 related_pickings |= previous_moves.picking_id
-                previous_moves = previous_moves.move_orig_ids - accessed_moves
+                previous_moves = previous_moves.move_orig_ids.filtered(lambda move: not move.origin_returned_move_id) - accessed_moves
                 accessed_moves |= previous_moves
-            accessed_moves = next_moves = self.move_ids.move_dest_ids
+            accessed_moves = next_moves = moves.move_dest_ids.filtered(lambda move: not move.origin_returned_move_id)
             while next_moves:
                 related_pickings |= next_moves.picking_id
-                next_moves = next_moves.move_dest_ids - accessed_moves
+                next_moves = next_moves.move_dest_ids.filtered(lambda move: not move.origin_returned_move_id) - accessed_moves
                 accessed_moves |= next_moves
             without_tracking = related_pickings.filtered(lambda p: not p.carrier_tracking_ref)
             without_tracking.carrier_tracking_ref = res['tracking_number']

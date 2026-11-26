@@ -299,3 +299,63 @@ class TestCarrierPropagation(TransactionCase):
         # both pickings should be validated but and activity should have been created for the invalid picking
         self.assertEqual(pickings.mapped('state'), ['done', 'done'])
         self.assertTrue(self.env['mail.activity'].search([('res_model', '=', 'stock.picking'), ('res_id', '=', pickings[1].id), ('user_id', '=', alien.id)], limit=1))
+
+    def test_send_to_shipper_does_not_propagate_tracking_through_return_moves(self):
+        order = self.env["sale.order"].create({
+            "partner_id": self.partner_propagation.id,
+            "order_line": [
+                Command.create({
+                    "product_id": self.super_product.id
+                }),
+            ]
+        })
+        order.action_confirm()
+        original_delivery = order.picking_ids
+        original_move = original_delivery.move_ids
+        original_delivery.button_validate()
+        original_delivery.write({
+            "carrier_id": self.normal_delivery.id,
+            "carrier_tracking_ref": "ORIGIN-REF",
+        })
+        # Create a standard return from the original delivery
+        return_wizard = self.env["stock.return.picking"].with_context(
+            active_model=original_delivery._name,
+            active_id=original_delivery.id,
+        ).create({})
+        res = return_wizard.action_create_returns_all()
+        return_picking = self.env[res["res_model"]].browse(res["res_id"])
+        return_move = return_picking.move_ids
+        return_picking.button_validate()
+        # Simulate a new delivery linked to the return move (repair product)
+        redelivery_picking = self.env["stock.picking"].create({
+            "picking_type_id": self.warehouse.out_type_id.id,
+            "location_id": return_move.location_dest_id.id,
+            "location_dest_id": self.customer_location.id,
+            "partner_id": self.partner_propagation.id,
+            "carrier_id": self.normal_delivery.id,
+            "move_ids": [
+                Command.create({
+                    "name": self.super_product.name,
+                    "product_id": self.super_product.id,
+                    "product_uom_qty": 1,
+                    "move_orig_ids": [Command.link(return_move.id)],
+                }),
+            ]
+        })
+        redelivery_move = redelivery_picking.move_ids
+        redelivery_picking.action_confirm()
+        # Ensure the test reproduces the intended move chain.
+        self.assertEqual(return_move.origin_returned_move_id, original_move)
+        self.assertIn(return_move, redelivery_move.move_orig_ids)
+        with patch.object(
+            type(self.normal_delivery),
+            "send_shipping",
+            return_value=[{
+                "exact_price": 0.0,
+                "tracking_number": "REDELIVERY-REF",
+            }],
+        ):
+            redelivery_picking.send_to_shipper()
+        self.assertEqual(redelivery_picking.carrier_tracking_ref, "REDELIVERY-REF")
+        self.assertFalse(return_picking.carrier_tracking_ref)
+        self.assertEqual(original_delivery.carrier_tracking_ref, "ORIGIN-REF")
